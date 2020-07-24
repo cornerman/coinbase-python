@@ -137,14 +137,24 @@ class Client(object):
             # No content so its obviously not paginated
             return resp
 
+        resp_content_is_bytes = isinstance(resp_content, bytes)
         # if resp._content is a bytes object, decode it so we can loads it as json
-        if isinstance(resp_content, bytes):
+        if resp_content_is_bytes:
             resp_content = resp_content.decode('utf-8')
 
         # Load the json so we can use the data as python objects
         content = json.loads(resp_content)
         if 'pagination' not in content:
             # Result is not paginated
+            if isinstance(content['data'], list):
+                print("The Content", content)
+                content['data'].extend(prev_data)
+                # If resp._content was is a bytes object, only set it as a bytes object
+                if resp_content_is_bytes:
+                    resp._content = json.dumps(content).encode('utf-8')
+                else:
+                    resp._content = json.dumps(content)
+            
             return resp
 
         page_info = content['pagination']
@@ -152,8 +162,8 @@ class Client(object):
             # next_uri is None when the cursor has been iterated to the last element
             content['data'].extend(prev_data)
             # If resp._content was is a bytes object, only set it as a bytes object
-            if isinstance(resp_content, bytes):
-                resp._content = json.dumps(content).decode('utf-8')
+            if resp_content_is_bytes:
+                resp._content = json.dumps(content).encode('utf-8')
             else:
                 resp._content = json.dumps(content)
             return resp
